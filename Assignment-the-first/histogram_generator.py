@@ -17,6 +17,7 @@ parser.add_argument("-f", help="input fastq file")
 parser.add_argument("-l", help="length of each read")
 parser.add_argument("-n", help="number of reads in the file")
 parser.add_argument("-o", help="output histogram file name")
+parser.add_argument("-t", help="first word of title of output histogram")
 args = parser.parse_args()
 
 # define globals
@@ -24,6 +25,7 @@ input_file: str = args.f
 read_length: int = int(args.l)
 num_reads: int = int(args.n)
 output_file: str = args.o
+histogram_subtitle: str = args.t
 
 # check if fastq file is gzipped
 if input_file.endswith('.gz'):
@@ -83,10 +85,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 
                 # grab quality score line of record
                 if linecount % 4 == 3:
-                    
-                    # determine read count
-                    readcount = linecount // 4 # 0-indexed
-                    
+
                     # loop through each letter in the newline and append phred score to correct list in mean
                     for i, letter in enumerate(newline):
                         phred_score = Bioinfo.convert_phred(letter)
@@ -95,6 +94,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 # increment linecounter
                 linecount+=1
 
+    # if not gzipped
     else:
 
         # open file
@@ -114,10 +114,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 
                 # grab quality score line of record
                 if linecount % 4 == 3:
-                    
-                    # determine read count
-                    readcount = linecount // 4 # 0-indexed
-                    
+
                     # loop through each letter in the newline and add score to running total of mean
                     for i, letter in enumerate(newline):
                         phred_score = Bioinfo.convert_phred(letter)
@@ -134,7 +131,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
 
 # open file and run array_of_arrays
 gzipped: bool = input_file.endswith('.gz')
-mean: float, linecount: int = qscore_average_function(
+mean, linecount = qscore_average_function(
         file=input_file,
         read_length=read_length,
         num_reads=num_reads,
@@ -143,7 +140,7 @@ mean: float, linecount: int = qscore_average_function(
 
 # generate and save histogram of mean score by position
 plt.bar(range(mean.shape[0]),mean.flatten(),color='purple')
-plt.title('mean score by position of read')
+plt.title('{} mean score by position of read'.format(histogram_subtitle))
 plt.xlabel('position')
 plt.ylabel('mean score')
 plt.savefig(output_file)

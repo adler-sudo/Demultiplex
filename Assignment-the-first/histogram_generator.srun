@@ -11,6 +11,7 @@ input_file=$1
 read_length=$2
 num_reads=$3
 output_file=$4
+histogram_subtitle=$5
 
 # run
-/usr/bin/time -v ./histogram_generator.py -f $input_file -l $read_length -n $num_reads -o $output_file
+/usr/bin/time -v ./histogram_generator.py -f $input_file -l $read_length -n $num_reads -o $output_file -t $histogram_subtitle
