@@ -42,8 +42,50 @@ We also want to track the number of each of these files. ALSO, for each of the m
 ```
 3. Upload your [4 input FASTQ files](../TEST-input_FASTQ) and your [>=6 expected output FASTQ files](../TEST-output_FASTQ).
 4. Pseudocode
+```
+Read in each file.
+
+    For loop to read each record and compare indexes:
+        
+        Reverse complement index2 
+        
+        Calculate quality score for each index
+
+        If either index contains 'N':
+            output record 1 to read1_lowqual file
+            output record 2 to read2_lowqual file
+        elif either index is below quality threshold:
+            output record 1 to read1_lowqual file
+            output record 2 to read2_lowqual file
+        elif index1 != index2:
+            output record 1 to read1_mismatch file
+            output record 2 to read2_mismatch file
+        elif match:
+            output record 1 to read1 file for specific index
+            output record 2 to read2 file for specific index
+
+```
 5. High level functions. For each function, be sure to include:
+    ```
+    reverse complement function
     1. Description/doc string
+        will be used to reverse compliment index2
     2. Function headers (name and parameters)
+        name: reverse_complement
+        parameters: string to be reverse complemented
     3. Test examples for individual functions
+        pass string and produce reverse complement
     4. Return statement
+        returns: reverse complement input string
+    ```
+    ```
+    contains n function
+    1. Description/doc string
+        will be used to check if N present in index
+    2. Function headers (name and parameters)
+        name: contains_n
+        parameters: 
+    ```
+    ```
+
+    ```
