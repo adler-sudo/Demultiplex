@@ -59,22 +59,24 @@ Open each of the files to read through each corresponding record simultaneously.
 
     For loop to read each record and compare indexes:
         
-        Reverse complement index2 
+        Reverse complement index2.
         
-        Calculate quality score for each of the current indexes
+        Calculate quality score for each of the current indexes.
+
+        Append indexes to header lines of read 1 and read 2.
 
         If either index contains 'N':
-            store record 1 to read1_lowqual category of dict
-            store record 2 to read2_lowqual category of dict
+            store read record 1 to read1_lowqual category of dict
+            store read record 2 to read2_lowqual category of dict
         elif either index is below quality threshold:
-            store record 1 to read1_lowqual category of dict
-            store record 2 to read2_lowqual category of dict
+            store read record 1 to read1_lowqual category of dict
+            store read record 2 to read2_lowqual category of dict
         elif index1 != index2:
-            store record 1 to read1_mismatch category of dict
-            store record 2 to read2_mismatch category of dict
+            store read record 1 to read1_mismatch category of dict
+            store read record 2 to read2_mismatch category of dict
         elif match:
-            store record 1 to read1 for specific index category of dict
-            store record 2 to read2 for specific index category of dict
+            store read record 1 to read1 for specific index category of dict
+            store read record 2 to read2 for specific index category of dict
 
 Output all files to specified output category (defines the file they end up in).
 
@@ -107,6 +109,20 @@ Output all files to specified output category (defines the file they end up in).
         returns: True or False
     ```
     ```
+    append indexes to header function
+    1. Descriptoin/doc string
+        appends indexes to header lines of each of the two reads
+            (index1-index2)
+    2. Function headers (name and parameters)
+        name: read_index_appender
+        parameters: read header, indexes
+    3. Test examples for individual functions
+        Input: header1, header2, index1, index2
+        Expected output: @header1:index1-index2, @header2:index1-index2
+    4. Return statment
+        returns: replaces old headers with new headers of the current record
+    ```
+    ```
     quality score function
     * just pull from Bioinfo module 
     ```
@@ -119,5 +135,5 @@ Output all files to specified output category (defines the file they end up in).
 
 ### Sources:
 ```
-Phred-scaled quality Scores – GATK. GATK. (n.d.). https://gatk.broadinstitute.org/hc/en-us/articles/360035531872-Phred-scaled-quality-scores. 
+Phred-scaled quality Scores – GATK. GATK. (n.d.).https://gatk.broadinstitute.org/hc/en-us/articles/360035531872-Phred-scaled-quality-scores. 
 ```
