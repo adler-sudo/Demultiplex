@@ -755,21 +755,24 @@ def array_of_arrays(file: str, read_length: int, num_reads: int, gzipped=True):
     
     Paramteters:
     ------------
-        file: fastq file to perfom calculations on
-        
-        read_length: length of each read in fastq file
-        
-        num_reads: number of reads in fastq file
+    file : str
+        fastq file to perfom calculations on
+    
+    read_length : int
+        length of each read in fastq file
+    
+    num_reads : int
+        number of reads in fastq file
     
     Returns:
     --------
-        all_qscores:
-            - array of arrays. 
-                - each row in the array represents one position (0-indexed). 
-                - each column in the array represents read.
-            
-        linecount:
-            total lines in file
+    all_qscores : numpy array
+        array of arrays. 
+            each row in the array represents one position (0-indexed). 
+            each column in the array represents read.
+        
+    linecount : int
+        total lines in file
     """
 
     # initiate score sum

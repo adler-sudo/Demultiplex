@@ -42,21 +42,25 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
     
     Paramteters:
     ------------
-        file: fastq file to perfom calculations on
-        
-        read_length: length of each read in fastq file
-        
-        num_reads: number of reads in fastq file
-
-        gzipped: is fastq file gzipped
+    file : str
+        fastq file to perfom calculations on
     
+    read_length : int
+        length of each read in fastq file
+    
+    num_reads : int
+        number of reads in fastq file
+
+    gzipped : bool
+        mark True if fastq file is gzipped
+
     Returns:
     --------
-        mean:
-            - array of mean qscore where index is equal to position. 
-            
-        linecount:
-            - total lines in file
+    mean : numpy array
+        array of mean qscore where index is equal to position. 
+        
+    linecount : int
+        total lines in file
     """
 
     # initiate score sum
@@ -96,8 +100,6 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
 
     # if not gzipped
     else:
-
-        # open file
         with open(file) as f:
             
             # loop through each line
@@ -129,7 +131,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
 
     return mean, linecount
 
-# open file and run array_of_arrays
+# qscore_average_function
 gzipped: bool = input_file.endswith('.gz')
 mean, linecount = qscore_average_function(
         file=input_file,
@@ -140,7 +142,7 @@ mean, linecount = qscore_average_function(
 
 # generate and save histogram of mean score by position
 plt.bar(range(mean.shape[0]),mean.flatten(),color='purple')
-plt.title('{} mean score by position of read'.format(histogram_subtitle))
+plt.title('{} mean score by base position in read'.format(histogram_subtitle))
 plt.xlabel('position')
 plt.ylabel('mean score')
 plt.savefig(output_file)
