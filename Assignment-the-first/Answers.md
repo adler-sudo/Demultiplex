@@ -40,20 +40,30 @@
 ## Part 2
 1. Define the problem
 ```
-We want to bucket our multiplexed data. We also know that we have some index hopping present in the data, meaning we have to filter out the bad indexes. 
+We have the output reads from a paired-end sequencing, of which we want to bucket into their respective indexed buckets. Additionally, we know that index hopping occurred during this library preparation, and therefore we also want to filter out the mismatched indexes. We will additionally apply a quality filter to separate reads/indexes of low quality or unknown index.
 ```
 2. Describe output
 ```
-The output should include two fastq files for each index-pair: one each for read1 and read2 (24 unique indexes * 2 read files= 48 output fastq files). We should then have two separate fastq files for non-matching index-pairs: one each for read1 and read2 (1 group mismatched * 2 read files = 2 output mismatched index fastq files). We should then output another two fastq files that hold the reads for unknown/low-quality index-pairs: one for each of read1 and read2 (1 group unknown/low-qual * 2 read files = 2 output unknown/low-quality fastq files). Total: 52 output fastq files.
+The output should include two fastq files for each index-pair: one each for read1 and read2 (24 unique indexes * 2 read files= 48 output fastq files). 
 
-The header for each of the reads in these files must include BOTH index1 and index 2 separated by a hyphen.
+We should then have two separate fastq files for non-matching index-pairs: one each for read1 and read2 (1 group mismatched * 2 read files = 2 output mismatched index fastq files). 
 
-We also want to track the number of reads that fall into each of these categories. ALSO, for each of the mismatched index, we want to track the number for each possible combination, up to 24!, number of combinations.
+We should then output another two fastq files that hold the reads for unknown/low-quality index-pairs: one for each of read1 and read2 (1 group unknown/low-qual * 2 read files = 2 output unknown/low-quality fastq files). 
+
+Total: 52 output fastq files.
+
+
+The header for each of the reads in these files must include BOTH index1 and index2 separated by a hyphen.
+
+We also want to track the number of reads that fall into each of these categories. Additionally, for each of the mismatched indexes, we want to track the count for each possible combination. 
 ```
 3. Upload your [4 input FASTQ files](../TEST-input_FASTQ) and your [>=6 expected output FASTQ files](../TEST-output_FASTQ).
 4. Pseudocode
 ```
 Create dictionary for each output category (defines the file they end up in).
+    - keys will be contain each of the categories
+        - eventual file name
+    - values will contain a collection of each record
 
 Open each of the files to read through each corresponding record simultaneously.
 
