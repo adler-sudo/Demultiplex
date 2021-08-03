@@ -63,50 +63,19 @@ def rev_complement(strand):
     
     return rev_comp
 
-
-
-# dynamic file opening
-#############################################  DYNAMIC FILE OPENING  #######################################################
-
-
-# TODO: need to figure out how to open each of these files;
-    # maybe we can have a list of unique variables that we index
-    # in order to name each of the files, for example, if we
-    # have a list of random character variable names and 26 input files
-    # then we would index 0-25 of our random character variable list
+# dynamically open a read1 and read2 for each barcode
 barcodes = {}
 with open(barcodes_file) as b:
     for line in b:
         line = line.rstrip().split('\t')
         barcodes[line[1]] = [line[0]]
-# barcodes = sorted(barcodes)
-
-
-
-# generate and open output files
-# TODO: THIS DYNAMICALLY CREATES ALL OF OUR BARCODE FILES
-    # SO CAN WE NOW JUST USE THE ITEMS IN THE LIST TO ACCESS
-    # AND WRITE TO EACH OF THOSE FILES?
-# TODO: SWITCH MY BARCODES DICTIONARY SO WE CAN USE THE 
-    # BARCODE TO ACCESS THE CORRECT POSITION OF OUR LIST
 
 # so here we are dynamically creating our output text files based on the names
-    # of the barcodes that come in. we store the object in the dictionary
-    # which can be accessed using the BARCODE. <- by creating access using
-    # the BARCODE, then we can easily compare to our INDEXES that we find up above
-        
-        # FOR EXAMPLE:
-            # if the index is a match, then write to the file that is associated
-                # with that index
-
 for f in barcodes:
     read1_match = '{}_read1.fastq.gz'.format(barcodes[f][0])
     read2_match = '{}_read2.fastq.gz'.format(barcodes[f][0]) # added this post 8/2 run
     barcodes[f].append(gzip.open(read1_match, 'wb'))
     barcodes[f].append(gzip.open(read2_match, 'wb')) # added this post 8/2 run
-
-##############################################################################################################
-
 
 # open standard input and output files
 with (gzip.open(read1_file) as rf1,
@@ -149,19 +118,19 @@ with (gzip.open(read1_file) as rf1,
         rf1_record[0] = new_header1 # TODO: probably a more creative way to assign the new header?
         rf2_record[0] = new_header2
 
-        # check for N, unknown barcode, or low quality score
+        # check for N, unknown barcode, or low quality score and write to low_qual if so
         if 'N' in if1_record[1] or 'N' in if2_record[1] or if1_record[1] not in barcodes or low_qscore < 20:
             for component in rf1_record:
                 lowqual1.write((component + '\n').encode())
             for component in rf2_record:
                 lowqual2.write((component + '\n').encode())
 
-        # check for index match
+        # check for index match and write to match files for corresponding index
         elif if1_record[1] == i2_rev:
             for component in rf1_record:
                 barcodes[if1_record[1]][1].write((component + '\n').encode())
             for component in rf2_record:
-                barcodes[if1_record[1]][1].write((component + '\n').encode())
+                barcodes[if1_record[1]][2].write((component + '\n').encode()) # added reference to second read file (added post 8/2 run)
         
         # otherwise write to mismatch file
         else:
@@ -184,34 +153,8 @@ with (gzip.open(read1_file) as rf1,
 # close each of our dynamic output files
 for f in barcodes:
     barcodes[f][1].close()
+    barcodes[f][2].close() # added post 8/2 run
+    
+    # get rid of file instances following close
     barcodes[f].pop(-1)
-
-
-
-
-############################################### PSEUDOCODE #####################################################
-
-# Open each of the files to read through each corresponding record simultaneously.
-
-#     For loop to read each record and compare indexes:
-        
-#         Reverse complement index2.
-        
-#         Calculate quality score for each of the current indexes.
-
-#         Append indexes to header lines of read 1 and read 2.
-
-#         If either index contains 'N':
-#             store read record 1 to read1_lowqual category of dict
-#             store read record 2 to read2_lowqual category of dict
-#         elif either index is below quality threshold:
-#             store read record 1 to read1_lowqual category of dict
-#             store read record 2 to read2_lowqual category of dict
-#         elif index1 != index2:
-#             store read record 1 to read1_mismatch category of dict
-#             store read record 2 to read2_mismatch category of dict
-#         elif match:
-#             store read record 1 to read1 for specific index category of dict
-#             store read record 2 to read2 for specific index category of dict
-
-# Output all files to specified output category (defines the file they end up in).
+    barcodes[f].pop(-1)
