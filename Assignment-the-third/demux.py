@@ -23,8 +23,6 @@ parser.add_argument("-r2", help="read 2 file (fastq.gz)")
 parser.add_argument("-i1", help="index 1 file (fastq.gz)")
 parser.add_argument("-i2", help="index 2 file (fastq.gz)")
 parser.add_argument("-b", help="barcodes file (tsv)")
-parser.add_argument("-l", help="length of each read")
-parser.add_argument("-n", help="number of reads in the file")
 args = parser.parse_args()
 
 # define globals
@@ -33,8 +31,6 @@ read2_file: str = str(args.r2)
 index1_file: str = str(args.i1)
 index2_file: str = str(args.i2)
 barcodes_file: str = str(args.b)
-read_length: int = int(args.l)
-num_reads: int = int(args.n)
 
 # file format check
 assert read1_file.endswith('.fastq.gz'), "Read 1 file must be .fastq.gz"
@@ -67,8 +63,12 @@ def rev_complement(strand):
     
     return rev_comp
 
+
+
 # dynamic file opening
-####################################################################################################
+#############################################  DYNAMIC FILE OPENING  #######################################################
+
+
 # TODO: need to figure out how to open each of these files;
     # maybe we can have a list of unique variables that we index
     # in order to name each of the files, for example, if we
@@ -80,7 +80,7 @@ with open(barcodes_file) as b:
         line = line.rstrip().split('\t')
         barcodes[line[1]] = [line[0]]
 # barcodes = sorted(barcodes)
-print(barcodes)
+
 
 
 # generate and open output files
@@ -100,21 +100,23 @@ print(barcodes)
                 # with that index
 
 for f in barcodes:
-    file = '{}.txt'.format(barcodes[f][0])
-    barcodes[f].append(open(file, 'w'))
-print(barcodes)
+    read1_match = '{}_read1.fastq.gz'.format(barcodes[f][0])
+    read2_match = '{}_read2.fastq.gz'.format(barcodes[f][0]) # added this post 8/2 run
+    barcodes[f].append(gzip.open(read1_match, 'wb'))
+    barcodes[f].append(gzip.open(read2_match, 'wb')) # added this post 8/2 run
 
-##################################################################################################
+##############################################################################################################
+
 
 # open standard input and output files
 with (gzip.open(read1_file) as rf1,
     gzip.open(read2_file) as rf2,
     gzip.open(index1_file) as if1,
     gzip.open(index2_file) as if2,
-    open('read1_lowqual.fastq','w') as lowqual1,
-    open('read2_lowqual.fastq','w') as lowqual2,
-    open('read1_mismatch.fastq','w') as mismatch1,
-    open('read2_mismatch.fastq','w') as mismatch2):
+    gzip.open('read1_lowqual.fastq.gz','wb') as lowqual1,
+    gzip.open('read2_lowqual.fastq.gz','wb') as lowqual2,
+    gzip.open('read1_mismatch.fastq.gz','wb') as mismatch1,
+    gzip.open('read2_mismatch.fastq.gz','wb') as mismatch2):
 
     # read 1st records from file
     rf1_record = [rf1.readline().decode('utf-8').rstrip() for _ in range(4)]
@@ -132,7 +134,7 @@ with (gzip.open(read1_file) as rf1,
         i2_rev = rev_complement(if2_record[1])
 
         # check quality score reads
-        # TODO: may be a good idea to work a quality calculation check in here
+        # TODO: may be a good idea to work a quality calculation check in here (unittest)
         rf1_qscore = sum([int(convert_phred(letter)) for letter in rf1_record[3]]) / len(rf1_record[3])
         rf2_qscore = sum([int(convert_phred(letter)) for letter in rf2_record[3]]) / len(rf2_record[3])
         if1_qscore = sum([int(convert_phred(letter)) for letter in if1_record[3]]) / len(if1_record[3])
@@ -147,33 +149,27 @@ with (gzip.open(read1_file) as rf1,
         rf1_record[0] = new_header1 # TODO: probably a more creative way to assign the new header?
         rf2_record[0] = new_header2
 
-        # check for unknown
-        if 'N' in if1_record[1] or 'N' in if2_record[1] or low_qscore < 20:
-            print('UNKNOWN OR LOW QUALITY!', if1_record[1], i2_rev)
+        # check for N, unknown barcode, or low quality score
+        if 'N' in if1_record[1] or 'N' in if2_record[1] or if1_record[1] not in barcodes or low_qscore < 20:
             for component in rf1_record:
-                lowqual1.write(component + '\n')
+                lowqual1.write((component + '\n').encode())
             for component in rf2_record:
-                lowqual2.write(component + '\n')
-        
-        # # check for low quality
-        # elif low_qscore < 20:
-        #     print(new_header)
-        #     print('LOW QUALITY!', if1_record[1], i2_rev)
+                lowqual2.write((component + '\n').encode())
 
         # check for index match
         elif if1_record[1] == i2_rev:
-            print('MATCH!', if1_record[1], i2_rev)
-            print('writing to {}.txt'.format(barcodes[if1_record[1]][0]))
-            for component in if1_record:
-                barcodes[if1_record[1]][1].write(component + '\n')
-        else:
-            print('MISMATCH!', if1_record[1], i2_rev)
             for component in rf1_record:
-                mismatch1.write(component + '\n')
+                barcodes[if1_record[1]][1].write((component + '\n').encode())
             for component in rf2_record:
-                mismatch2.write(component + '\n')
+                barcodes[if1_record[1]][1].write((component + '\n').encode())
         
-
+        # otherwise write to mismatch file
+        else:
+            for component in rf1_record:
+                mismatch1.write((component + '\n').encode())
+            for component in rf2_record:
+                mismatch2.write((component + '\n').encode())
+        
         # read next record
         rf1_record = [rf1.readline().decode('utf-8').rstrip() for _ in range(4)]
         rf2_record = [rf2.readline().decode('utf-8').rstrip() for _ in range(4)]
@@ -182,7 +178,7 @@ with (gzip.open(read1_file) as rf1,
 
         # increment recordcount and update statement
         recordcount += 1
-        if recordcount % 10000000 == 0:
+        if recordcount % 1000000 == 0:
             print('Records processed:', recordcount)
 
 # close each of our dynamic output files
@@ -190,10 +186,10 @@ for f in barcodes:
     barcodes[f][1].close()
     barcodes[f].pop(-1)
 
-print(barcodes)
 
 
 
+############################################### PSEUDOCODE #####################################################
 
 # Open each of the files to read through each corresponding record simultaneously.
 
