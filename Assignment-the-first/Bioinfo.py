@@ -853,28 +853,33 @@ def array_of_arrays(file: str, read_length: int, num_reads: int, gzipped=True):
     
     return all_qscores, linecount
 
-# similar to array_of_arrays but instead calculates mean in place
+
+# define postion qscore average function
 def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped=True):
     """
     Given fatsq file or gzipped fastq file, generate an array of mean qscore by position.
     
     Paramteters:
     ------------
-        file: fastq file to perfom calculations on
-        
-        read_length: length of each read in fastq file
-        
-        num_reads: number of reads in fastq file
-
-        gzipped: is fastq file gzipped
+    file : str
+        fastq file to perfom calculations on
     
+    read_length : int
+        length of each read in fastq file
+    
+    num_reads : int
+        number of reads in fastq file
+
+    gzipped : bool
+        mark True if fastq file is gzipped
+
     Returns:
     --------
-        mean:
-            - array of mean qscore where index is equal to position. 
-            
-        linecount:
-            - total lines in file
+    mean : numpy array
+        array of mean qscore where index is equal to position. 
+        
+    linecount : int
+        total lines in file
     """
 
     # initiate score sum
@@ -886,11 +891,12 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
     # determine if gzipped
     if gzipped:
 
-        with io.TextIOWrapper(gzip.open(file, 'r')) as f:
+        with gzip.open(file, 'rb') as f:
         
             # loop through each line
             while True:
                 newline = f.readline().rstrip()
+                newline = newline.decode('utf-8')
                 
                 # break if empty (end of file)
                 if newline == '':
@@ -902,10 +908,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 
                 # grab quality score line of record
                 if linecount % 4 == 3:
-                    
-                    # determine read count
-                    readcount = linecount // 4 # 0-indexed
-                    
+
                     # loop through each letter in the newline and append phred score to correct list in mean
                     for i, letter in enumerate(newline):
                         phred_score = Bioinfo.convert_phred(letter)
@@ -914,9 +917,8 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 # increment linecounter
                 linecount+=1
 
+    # if not gzipped (if fastq file)
     else:
-
-        # open file
         with open(file) as f:
             
             # loop through each line
@@ -933,10 +935,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
                 
                 # grab quality score line of record
                 if linecount % 4 == 3:
-                    
-                    # determine read count
-                    readcount = linecount // 4 # 0-indexed
-                    
+
                     # loop through each letter in the newline and add score to running total of mean
                     for i, letter in enumerate(newline):
                         phred_score = Bioinfo.convert_phred(letter)
@@ -950,3 +949,7 @@ def qscore_average_function(file: str, read_length: int, num_reads: int, gzipped
     mean = mean / recordcount
 
     return mean, linecount
+
+# TODO: need to generate test files
+# if __name__ == "__main__":
+#     assert qscore_average_function()
