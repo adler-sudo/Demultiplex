@@ -14,8 +14,8 @@ from Bioinfo import convert_phred
 
 # define arparser
 parser = argparse.ArgumentParser(
-    description="takes read and index files from Illumina paired-end seq,  \
-    demultiplexes the reads based on index, separates unknown index or low quality  \
+    description="takes barcodes, read files, and index files from Illumina paired-end  \
+    seq, demultiplexes the reads based on index, separates unknown index or low quality  \
     reads, and separates index-hopped reads"
 )
 parser.add_argument("-r1", help="read 1 file (fastq.gz)")
@@ -78,20 +78,20 @@ for f in barcodes:
     barcodes[f].append(gzip.open(read2_match, 'wb')) # added this post 8/2 run
 
 # open standard input and output files
-with (gzip.open(read1_file) as rf1,
-    gzip.open(read2_file) as rf2,
-    gzip.open(index1_file) as if1,
-    gzip.open(index2_file) as if2,
-    gzip.open('read1_lowqual.fastq.gz','wb') as lowqual1,
-    gzip.open('read2_lowqual.fastq.gz','wb') as lowqual2,
-    gzip.open('read1_mismatch.fastq.gz','wb') as mismatch1,
-    gzip.open('read2_mismatch.fastq.gz','wb') as mismatch2):
+with gzip.open(read1_file, 'rt') as rf1, \
+    gzip.open(read2_file, 'rt') as rf2, \
+    gzip.open(index1_file, 'rt') as if1, \
+    gzip.open(index2_file, 'rt') as if2, \
+    gzip.open('read1_lowqual.fastq.gz','wb') as lowqual1, \
+    gzip.open('read2_lowqual.fastq.gz','wb') as lowqual2, \
+    gzip.open('read1_mismatch.fastq.gz','wb') as mismatch1, \
+    gzip.open('read2_mismatch.fastq.gz','wb') as mismatch2:
 
     # read 1st records from file
-    rf1_record = [rf1.readline().decode('utf-8').rstrip() for _ in range(4)]
-    rf2_record = [rf2.readline().decode('utf-8').rstrip() for _ in range(4)]
-    if1_record = [if1.readline().decode('utf-8').rstrip() for _ in range(4)]
-    if2_record = [if2.readline().decode('utf-8').rstrip() for _ in range(4)]
+    rf1_record = [rf1.readline().rstrip() for _ in range(4)]
+    rf2_record = [rf2.readline().rstrip() for _ in range(4)]
+    if1_record = [if1.readline().rstrip() for _ in range(4)]
+    if2_record = [if2.readline().rstrip() for _ in range(4)]
 
     # recordcount tracker
     recordcount = 1
@@ -104,6 +104,7 @@ with (gzip.open(read1_file) as rf1,
 
         # check quality score reads
         # TODO: may be a good idea to work a quality calculation check in here (unittest)
+        # TODO: turn this into a function
         rf1_qscore = sum([int(convert_phred(letter)) for letter in rf1_record[3]]) / len(rf1_record[3])
         rf2_qscore = sum([int(convert_phred(letter)) for letter in rf2_record[3]]) / len(rf2_record[3])
         if1_qscore = sum([int(convert_phred(letter)) for letter in if1_record[3]]) / len(if1_record[3])
@@ -140,10 +141,10 @@ with (gzip.open(read1_file) as rf1,
                 mismatch2.write((component + '\n').encode())
         
         # read next record
-        rf1_record = [rf1.readline().decode('utf-8').rstrip() for _ in range(4)]
-        rf2_record = [rf2.readline().decode('utf-8').rstrip() for _ in range(4)]
-        if1_record = [if1.readline().decode('utf-8').rstrip() for _ in range(4)]
-        if2_record = [if2.readline().decode('utf-8').rstrip() for _ in range(4)]
+        rf1_record = [rf1.readline().rstrip() for _ in range(4)]
+        rf2_record = [rf2.readline().rstrip() for _ in range(4)]
+        if1_record = [if1.readline().rstrip() for _ in range(4)]
+        if2_record = [if2.readline().rstrip() for _ in range(4)]
 
         # increment recordcount and update statement
         recordcount += 1
