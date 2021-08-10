@@ -101,7 +101,7 @@ if1 = gzip.open(index1_file, 'rt')
 if2 = gzip.open(index2_file, 'rt')
 
 # open standard output files
-lowqual1 = pen('read1_lowqual.fastq','w')
+lowqual1 = open('read1_lowqual.fastq','w')
 lowqual2 = open('read2_lowqual.fastq','w')
 mismatch1 = open('read1_mismatch.fastq','w')
 mismatch2 = open('read2_mismatch.fastq','w')
