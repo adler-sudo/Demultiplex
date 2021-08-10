@@ -72,20 +72,20 @@ with open(barcodes_file) as b:
 
 # so here we are dynamically creating our output text files based on the names
 for f in barcodes:
-    read1_match = '{}_read1.fastq.gz'.format(barcodes[f][0])
-    read2_match = '{}_read2.fastq.gz'.format(barcodes[f][0]) # added this post 8/2 run
-    barcodes[f].append(gzip.open(read1_match, 'wb'))
-    barcodes[f].append(gzip.open(read2_match, 'wb')) # added this post 8/2 run
+    read1_match = '{}_read1.fastq'.format(barcodes[f][0])
+    read2_match = '{}_read2.fastq'.format(barcodes[f][0]) # added this post 8/2 run
+    barcodes[f].append(open(read1_match, 'w'))
+    barcodes[f].append(open(read2_match, 'w')) # added this post 8/2 run
 
 # open standard input and output files
 with gzip.open(read1_file, 'rt') as rf1, \
     gzip.open(read2_file, 'rt') as rf2, \
     gzip.open(index1_file, 'rt') as if1, \
     gzip.open(index2_file, 'rt') as if2, \
-    gzip.open('read1_lowqual.fastq.gz','wb') as lowqual1, \
-    gzip.open('read2_lowqual.fastq.gz','wb') as lowqual2, \
-    gzip.open('read1_mismatch.fastq.gz','wb') as mismatch1, \
-    gzip.open('read2_mismatch.fastq.gz','wb') as mismatch2:
+    open('read1_lowqual.fastq','w') as lowqual1, \
+    open('read2_lowqual.fastq','w') as lowqual2, \
+    open('read1_mismatch.fastq','w') as mismatch1, \
+    open('read2_mismatch.fastq','w') as mismatch2:
 
     # read 1st records from file
     rf1_record = [rf1.readline().rstrip() for _ in range(4)]
@@ -105,6 +105,7 @@ with gzip.open(read1_file, 'rt') as rf1, \
         # check quality score reads
         # TODO: may be a good idea to work a quality calculation check in here (unittest)
         # TODO: turn this into a function
+        # TODO: calculate quality scores inline so that we aren't wasting resources calculating all 4 every time (MAYBE THIS IS WHERE I'M LOSING TIME)
         rf1_qscore = sum([int(convert_phred(letter)) for letter in rf1_record[3]]) / len(rf1_record[3])
         rf2_qscore = sum([int(convert_phred(letter)) for letter in rf2_record[3]]) / len(rf2_record[3])
         if1_qscore = sum([int(convert_phred(letter)) for letter in if1_record[3]]) / len(if1_record[3])
@@ -120,25 +121,26 @@ with gzip.open(read1_file, 'rt') as rf1, \
         rf2_record[0] = new_header2
 
         # check for N, unknown barcode, or low quality score and write to low_qual if so
+        # TODO: move the N check and missing check up above the quality question
         if 'N' in if1_record[1] or 'N' in if2_record[1] or if1_record[1] not in barcodes or low_qscore < 20:
             for component in rf1_record:
-                lowqual1.write((component + '\n').encode())
+                lowqual1.write(component + '\n')
             for component in rf2_record:
-                lowqual2.write((component + '\n').encode())
+                lowqual2.write(component + '\n')
 
         # check for index match and write to match files for corresponding index
         elif if1_record[1] == i2_rev:
             for component in rf1_record:
-                barcodes[if1_record[1]][1].write((component + '\n').encode())
+                barcodes[if1_record[1]][1].write(component + '\n')
             for component in rf2_record:
-                barcodes[if1_record[1]][2].write((component + '\n').encode()) # added reference to second read file (added post 8/2 run)
+                barcodes[if1_record[1]][2].write(component + '\n') # added reference to second read file (added post 8/2 run)
         
         # otherwise write to mismatch file
         else:
             for component in rf1_record:
-                mismatch1.write((component + '\n').encode())
+                mismatch1.write(component + '\n')
             for component in rf2_record:
-                mismatch2.write((component + '\n').encode())
+                mismatch2.write(component + '\n')
         
         # read next record
         rf1_record = [rf1.readline().rstrip() for _ in range(4)]
