@@ -68,14 +68,21 @@ barcodes = {}
 with open(barcodes_file) as b:
     for line in b:
         line = line.rstrip().split('\t')
-        barcodes[line[1]] = [line[0]]
+        
+        # generate comprehensive 
+        barcodes[line[1]] = {
+            'barcode':line[0],
+            'read1file':'blank',
+            'read2file':'blank',
+            'counter':0
+        }
 
 # so here we are dynamically creating our output text files based on the names
 for f in barcodes:
-    read1_match = '{}_read1.fastq'.format(barcodes[f][0])
-    read2_match = '{}_read2.fastq'.format(barcodes[f][0]) # added this post 8/2 run
-    barcodes[f].append(open(read1_match, 'w'))
-    barcodes[f].append(open(read2_match, 'w')) # added this post 8/2 run
+    read1_match = '{}_read1.fastq'.format(barcodes[f]['barcode'])
+    read2_match = '{}_read2.fastq'.format(barcodes[f]['barcode'])
+    barcodes[f]['read1file'] = open(read1_match, 'w')
+    barcodes[f]['read2file'] = open(read2_match, 'w')
 
 # open standard input and output files
 with gzip.open(read1_file, 'rt') as rf1, \
@@ -87,20 +94,54 @@ with gzip.open(read1_file, 'rt') as rf1, \
     open('read1_mismatch.fastq','w') as mismatch1, \
     open('read2_mismatch.fastq','w') as mismatch2:
 
-    # read 1st records from file
-    rf1_record = [rf1.readline().rstrip() for _ in range(4)]
-    rf2_record = [rf2.readline().rstrip() for _ in range(4)]
-    if1_record = [if1.readline().rstrip() for _ in range(4)]
-    if2_record = [if2.readline().rstrip() for _ in range(4)]
-
     # recordcount tracker
-    recordcount = 1
+    recordcount = 0
+
+    # count index swaps
+    swap_counter = 0
 
     # loop and break at end of file
-    while rf1_record[0] != '':
+    while True:
+
+        # read next record
+        rf1_record = [rf1.readline().rstrip() for _ in range(4)]
+        rf2_record = [rf2.readline().rstrip() for _ in range(4)]
+        if1_record = [if1.readline().rstrip() for _ in range(4)]
+        if2_record = [if2.readline().rstrip() for _ in range(4)]
+
+        # break at end of file
+        if rf1_record[0] == '':
+            break
+
+        # increment recordcount and update statement
+        recordcount += 1
+        if recordcount % 100 == 0:
+            print('Records processed:', recordcount)
 
         # reverse complement index 2
         i2_rev = rev_complement(if2_record[1])
+
+        # generate new header
+        new_header1 = rf1_record[0] + ':' + if1_record[1] + '-' + i2_rev
+        new_header2 = rf2_record[0] + ':' + if1_record[1] + '-' + i2_rev
+        rf1_record[0] = new_header1 # TODO: probably a more creative way to assign the new header?
+        rf2_record[0] = new_header2
+
+        # if contains unknown base in index, write to low qual
+        if 'N' in if1_record[1] or 'N' in if2_record[1]:
+            for component in rf1_record:
+                lowqual1.write(component + '\n')
+            for component in rf2_record:
+                lowqual2.write(component + '\n')
+            continue
+
+        # if not valid barcode, write to low qual
+        if if1_record[1] not in barcodes:
+            for component in rf1_record:
+                lowqual1.write(component + '\n')
+            for component in rf2_record:
+                lowqual2.write(component + '\n')
+            continue
 
         # check quality score reads
         # TODO: may be a good idea to work a quality calculation check in here (unittest)
@@ -114,15 +155,9 @@ with gzip.open(read1_file, 'rt') as rf1, \
         # lowest qscore
         low_qscore = min([rf1_qscore,rf2_qscore,if1_qscore,if2_qscore])
 
-        # generate new header
-        new_header1 = rf1_record[0] + ':' + if1_record[1] + '-' + i2_rev
-        new_header2 = rf2_record[0] + ':' + if1_record[1] + '-' + i2_rev
-        rf1_record[0] = new_header1 # TODO: probably a more creative way to assign the new header?
-        rf2_record[0] = new_header2
-
         # check for N, unknown barcode, or low quality score and write to low_qual if so
         # TODO: move the N check and missing check up above the quality question
-        if 'N' in if1_record[1] or 'N' in if2_record[1] or if1_record[1] not in barcodes or low_qscore < 20:
+        if low_qscore < 20:
             for component in rf1_record:
                 lowqual1.write(component + '\n')
             for component in rf2_record:
@@ -131,33 +166,47 @@ with gzip.open(read1_file, 'rt') as rf1, \
         # check for index match and write to match files for corresponding index
         elif if1_record[1] == i2_rev:
             for component in rf1_record:
-                barcodes[if1_record[1]][1].write(component + '\n')
+                barcodes[if1_record[1]]['read1file'].write(component + '\n')
             for component in rf2_record:
-                barcodes[if1_record[1]][2].write(component + '\n') # added reference to second read file (added post 8/2 run)
-        
+                barcodes[if1_record[1]]['read2file'].write(component + '\n') # added reference to second read file (added post 8/2 run)
+            barcodes[if1_record[1]]['counter'] += 1
+
         # otherwise write to mismatch file
         else:
             for component in rf1_record:
                 mismatch1.write(component + '\n')
             for component in rf2_record:
                 mismatch2.write(component + '\n')
-        
-        # read next record
-        rf1_record = [rf1.readline().rstrip() for _ in range(4)]
-        rf2_record = [rf2.readline().rstrip() for _ in range(4)]
-        if1_record = [if1.readline().rstrip() for _ in range(4)]
-        if2_record = [if2.readline().rstrip() for _ in range(4)]
-
-        # increment recordcount and update statement
-        recordcount += 1
-        if recordcount % 1000000 == 0:
-            print('Records processed:', recordcount)
+            
+            # increment swap counter
+            swap_counter += 1
 
 # close each of our dynamic output files
 for f in barcodes:
-    barcodes[f][1].close()
-    barcodes[f][2].close() # added post 8/2 run
+    barcodes[f]['read1file'].close()
+    barcodes[f]['read2file'].close() # added post 8/2 run
+
+# summary barcodes
+sum_barcodes = {}
+
+# create summary file
+with open('summary_stats.md','w') as s:
     
-    # get rid of file instances following close
-    barcodes[f].pop(-1)
-    barcodes[f].pop(-1)
+    # write description
+    s.write('# Summary Stats\n')
+    s.write('## Percentage of reads from each adapter\n')
+
+    # calculate percentage of each sample
+    for f in barcodes:
+        barcode_id = barcodes[f]['barcode']
+        perc_reads = round(barcodes[f]['counter'] / recordcount * 100, 2)
+        sum_barcodes[barcode_id] = perc_reads
+    
+    # sort and write percentage and adapter
+    for sb in sorted(sum_barcodes):
+        s.write('{}: '.format(sb) + str(sum_barcodes[sb]) + "%" + "<br>\n")
+    
+    # write total index swaps
+    s.write("\n")
+    s.write('## Total index swaps\n')
+    s.write(str(swap_counter))
