@@ -23,6 +23,7 @@ parser.add_argument("-r2", help="read 2 file (fastq.gz)")
 parser.add_argument("-i1", help="index 1 file (fastq.gz)")
 parser.add_argument("-i2", help="index 2 file (fastq.gz)")
 parser.add_argument("-b", help="barcodes file (tsv)")
+parser.add_argument("-c", help="index mean quality cutoff")
 args = parser.parse_args()
 
 # define globals
@@ -31,6 +32,7 @@ read2_file: str = str(args.r2)
 index1_file: str = str(args.i1)
 index2_file: str = str(args.i2)
 barcodes_file: str = str(args.b)
+qual_cutoff: int = int(args.c) # TODO: put this in parser
 
 # file format check
 assert read1_file.endswith('.fastq.gz'), "Read 1 file must be .fastq.gz"
@@ -108,12 +110,9 @@ mismatch2 = open('read2_mismatch.fastq','w')
 
 # recordcount tracker
 recordcount = 0
-
-# unknown counter
 unknown_counter = 0
-
-# low quality tracker
 lowqual_counter = 0
+match_counter = 0
 
 # loop and break at end of file
 while True:
@@ -130,7 +129,7 @@ while True:
 
     # increment recordcount and update statement
     recordcount += 1
-    if recordcount % 100 == 0:
+    if recordcount % 100000 == 0:
         print('Records processed:', recordcount)
 
     # reverse complement index 2
@@ -162,21 +161,14 @@ while True:
         continue
 
     # check quality score reads
-    # TODO: may be a good idea to work a quality calculation check in here (unittest)
-    # TODO: turn this into a function
-    # TODO: calculate quality scores inline so that we aren't wasting resources calculating all 4 every time (MAYBE THIS IS WHERE I'M LOSING TIME)
     if1_qscore = sum([int(convert_phred(letter)) for letter in if1_record[3]]) / len(if1_record[3])
     if2_qscore = sum([int(convert_phred(letter)) for letter in rf2_record[3]]) / len(rf2_record[3])
-
-    # rf1_qscore = sum([int(convert_phred(letter)) for letter in rf1_record[3]]) / len(rf1_record[3])
-    # rf2_qscore = sum([int(convert_phred(letter)) for letter in rf2_record[3]]) / len(rf2_record[3])
 
     # lowest qscore
     low_qscore = min([if1_qscore,if2_qscore])
 
     # check for N, unknown barcode, or low quality score and write to low_qual if so
-    # TODO: move the N check and missing check up above the quality question
-    if low_qscore < 20:
+    if low_qscore < qual_cutoff:
         for component in rf1_record:
             lowqual1.write(component + '\n')
         for component in rf2_record:
@@ -189,6 +181,7 @@ while True:
         for component in rf2_record:
             barcodes[if1_record[1]]['read2file'].write(component + '\n') # added reference to second read file (added post 8/2 run)
         barcodes[if1_record[1]]['counter'] += 1
+        match_counter += 1
 
     # otherwise write to mismatch file
     else:
@@ -211,7 +204,7 @@ if2.close()
 
 # close standnard output files
 lowqual1.close()
-lowqualt2.close()
+lowqual2.close()
 mismatch1.close()
 mismatch2.close()
 
@@ -226,9 +219,11 @@ sum_barcodes = {}
 # create summary file
 with open('summary_stats.md','w') as s:
     
-    # write description
-    s.write('# Summary Stats\n')
-    s.write('## Percentage of reads from each adapter\n')
+    # calculate overall stats
+    match_perc_total = round(match_counter / recordcount * 100, 2)
+    swap_perc_total = round(swap_counter / recordcount * 100, 2)
+    unknown_perc_total = round(unknown_counter / recordcount * 100, 2)
+    lowqual_perc_total = round(lowqual_counter / recordcount * 100, 2)
 
     # calculate percentage of each sample
     for f in barcodes:
@@ -236,31 +231,31 @@ with open('summary_stats.md','w') as s:
         perc_reads = round(barcodes[f]['counter'] / recordcount * 100, 2)
         sum_barcodes[barcode_id] = perc_reads
     
+    # write description
+    s.write('# Summary Stats\n')
+    s.write('## Overall\n')
+    s.write('Number of records processed: ' + str(recordcount) + '<br>')
+    s.write('Index mean quality score cutoff: ' + str(qual_cutoff) + '<br>')
+    s.write('Percentage correctly indexed: ' + str(match_perc_total) + '%' + '<br>')
+    s.write('Percentage of index swaps: ' + str(swap_perc_total) + '%' + '<br>')
+    s.write('Percentage unknown index: ' + str(unknown_perc_total) + '%' + '<br>')
+    s.write('Percentage low quality index: ' + str(lowqual_perc_total) + '%' + '<br>')
+
     # sort and write percentage and adapter
+    s.write('\n## Percentage of records from each adapter:\n')
+    s.write('```\n')
+    s.write('adapter' + '\t' + 'perc_records\n')
     for sb in sorted(sum_barcodes):
-        s.write('{}: '.format(sb) + str(sum_barcodes[sb]) + "%" + "<br>\n")
-    
+        s.write('{}'.format(sb) + '\t' + str(sum_barcodes[sb]) + "%" + "\n")
+    s.write('```')
+
     # write percentage for each index swap
-    s.write("\n")
-    s.write('## Percentage of reads with each potential index swap:\n')
+    s.write('\n## Reads with each potential index swap:\n')
+    s.write('```\n')
+    s.write('index_combo' + '\t' + 'count' + '\t' + 'perc_of_all_mismatches\n')
     for swap in swap_dict:
-        swap_perc = round(swap_dict[swap] / recordcount * 100, 2)
-        s.write(swap + ': ' + str(swap_perc) + '%' + '<br>')
+        swap_perc = round(swap_dict[swap] / swap_counter * 100, 2)
+        s.write(swap + '\t' + str(swap_dict[swap]) + '\t' + str(swap_perc) + '%' + '\n')
+    s.write('```')
+
     
-    # write total percentage index swapping
-    swap_perc_total = round(swap_counter / recordcount * 100, 2)
-    s.write('\n')
-    s.write('## Percentage total index swaps:\n')
-    s.write('All index swaps: ' + str(swap_perc_total) + '%')
-
-    # write unknowns
-    unknown_perc_total = round(unknown_counter / recordcount * 100, 2)
-    s.write('\n')
-    s.write('## Percentage unknown index:\n')
-    s.write('Unknown index: ' + str(unknown_perc_total) + '%')
-
-    # write low quality
-    lowqual_perc_total = round(lowqual_counter / recordcount * 100, 2)
-    s.write('\n')
-    s.write('## Percentage low quality index:\n')
-    s.write('Low quality: ' + str(lowqual_perc_total) + '%')
