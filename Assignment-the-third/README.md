@@ -17,11 +17,11 @@ Final work will be submitted on [GitHub](.). Make sure your folder is well organ
 - Any figures/any other relevant data your code output
 
 # Description of items
-Bioinfo.py - Bioinfo module
-barcode_parser.py - generates tsv from barcodes.txt
-barcodes.tsv - tsv of barcodes for current multiplexed run
-barcodes.txt - txt of barcodes for current multiplexed run
-demux.out - output from talapas
-demux.py - demultiplex algorithm
-demux.srun - the instructions sent to talapas
-summary_stats.md - summary output of the current multiplexed run
+- Bioinfo.py - Bioinfo module
+- barcode_parser.py - generates tsv from barcodes.txt
+- barcodes.tsv - tsv of barcodes for current multiplexed run
+- barcodes.txt - txt of barcodes for current multiplexed run
+- demux.out - output from talapas
+- demux.py - demultiplex algorithm
+- demux.srun - the instructions sent to talapas
+- summary_stats.md - summary output of the current multiplexed run
